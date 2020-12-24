@@ -1,5 +1,5 @@
 """
-	Чи-Драйвер редиса
+    Чи-Драйвер редиса
 """
 
 from redis import Redis
@@ -11,7 +11,7 @@ class CHIDriverRedis(CHIDriver):
     """Драйвер RedisCluster."""
 
     def __init__(self, *av, **kw):
-    	"""Конструктор."""
-    	super().__init__(*av, **kw)
+        """Конструктор."""
+        super().__init__(*av, **kw)
 
-    	self.client = Redis(host=self.server[0]["host"], port=self.server[0]["port"])
+        self.client = Redis(host=self.server[0]["host"], port=self.server[0]["port"])

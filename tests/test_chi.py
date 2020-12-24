@@ -5,16 +5,56 @@ unittest case.
 import unittest
 from unittest.mock import Mock
 
-import rediscluster
+
+class BaseMock:
+    def __init__(self, *av, **kw):
+        """Конструктор."""
+        self.storage = {}
+
+    def get(self, key):
+        """Замена метода get."""
+        return self.storage.get(key)
+
+    def set(self, key, value, ttl=None):
+        """Замена метода set."""
+        self.storage[key] = value
+    
+    def delete(self, key):
+        """Замена метода delete."""
+        if key in self.storage:
+            del self.storage[key]
 
 
-class RedisClusterMock:
+from CHI.chi_util import mask_to_regex
+import re
+
+class RedisMock(BaseMock):
+    """Заглушка."""
+    def expire(self, key, ttl):
+        """Замена метода expire."""
+
+    def keys(self, mask):
+        """Замена метода keys."""
+        regex = re.compile(mask_to_regex(mask))
+        x = []
+        for k, v in self.storage.items():
+            if regex.search(k):
+                x.append(k)
+
+        import sys
+        print(self.storage, file=sys.stderr)
+        print([x, mask, regex], file=sys.stderr)
+
+        return x
+
+
+
+class RedisClusterMock(BaseMock):
     """Мок для RedisCluster."""
 
     def __init__(self, *av, **kw):
         """Конструктор."""
-        self.redis = {}
-        self.expires = {}
+        super().__init__(*av, **kw)
         self.connection_pool = Mock()
         self.connection_pool.nodes.nodes.items.return_value = ((0, {"server_type": "master"}),
                                                                (0, {"server_type": "slave"}))
@@ -28,28 +68,25 @@ class RedisClusterMock:
             return keys
         if command == 'eval':
             for key in keys:
-                del self.redis[key]
+                del self.storage[key]
             return 3
         return None
-
-    def get(self, key):
-        """Замена метода get."""
-        return self.redis.get(key)
-
-    def set(self, key, value):
-        """Замена метода set."""
-        self.redis[key] = value
 
     def expire(self, key, ttl):
         """Замена метода expire."""
 
-    def delete(self, key):
-        """Замена метода delete."""
-        if key in self.redis:
-            del self.redis[key]
+class MemcacheMock(BaseMock):
+    """Заглушка."""
 
+import pymemcache.client.base
+pymemcache.client.base.Client = MemcacheMock
 
+import rediscluster
 rediscluster.RedisCluster = RedisClusterMock
+
+import redis
+redis.Redis = RedisMock
+
 
 from CHI import CHI
 from CHI.chi_cache_object import CHI_MAX_TIME
@@ -161,7 +198,7 @@ class AdvancedTestSuite(unittest.TestCase):
                                                      ("type:x1:k3:x3")],
                          "Список ключей по маске.")
 
-        chi.erase("type:k1:k*:x3")
+        chi.erase("type:x1:k*:x3")
 
         self.assertEqual(chi.get("type:x1:k3:x3"), None, "Ключ удалён.")
         self.assertEqual(chi.get("type:x1:k3:x2"), 6, "Ключ остался.")
@@ -180,7 +217,7 @@ class AdvancedTestSuite(unittest.TestCase):
                                                      ("type:x1:k3:x3")],
                          "Список ключей по маске.")
 
-        chi.erase("type:k1:k*:x3")
+        chi.erase("type:x1:k*:x3")
 
         self.assertEqual(chi.get("type:x1:k3:x3"), None, "Ключ удалён.")
         self.assertEqual(chi.get("type:x1:k3:x2"), 6, "Ключ остался.")
@@ -201,6 +238,32 @@ class AdvancedTestSuite(unittest.TestCase):
 
         with self.assertRaises(CHIMethodIsNotSupportedException):
             chi.erase("type:x1:k*:x3")
+
+    def test_redis(self):
+        """Тест мемкеша."""
+        chi = CHI('10.10.10.10:80', driver="redis")
+
+        chi.set("type:x1:k1:x3", 10)
+        self.assertEqual(chi.get("type:x1:k1:x3"), 10, "Ключ есть.")
+
+        chi.remove("type:x1:k1:x3")
+        self.assertEqual(chi.get("type:x1:k1:x3"), None, "Ключ удалён.")
+
+        chi.set("type:x1:k1:x3", 10)
+        chi.set("type:x1:k2:x3", 20)
+        chi.set("type:x1:k3:x3", 30)
+        chi.set("type:x1:k3:x2", 6)
+
+        self.assertEqual(chi.keys("type:x1:k*:x3"), [("type:x1:k1:x3"),
+                                                     ("type:x1:k2:x3"),
+                                                     ("type:x1:k3:x3")],
+                         "Список ключей по маске.")
+
+        chi.erase("type:x1:k*:x3")
+
+        self.assertEqual(chi.get("type:x1:k3:x3"), None, "Ключ удалён.")
+        self.assertEqual(chi.get("type:x1:k3:x2"), 6, "Ключ остался.")
+
 
 
 if __name__ == '__main__':

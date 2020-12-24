@@ -2,10 +2,12 @@
     Предоставляет низкоуровневые методы для доступа к хранилищу Redis Cluster
 """
 
-import re
 from rediscluster import RedisCluster
-from CHI.chi_driver import CHIDriver
-from CHI.exception import CHIStrategyOfEraseException
+
+from .chi_driver import CHIDriver
+from .exception import CHIStrategyOfEraseException
+from .chi_util import mask_to_regex
+
 
 LUA_ERASE_ON_ONE_NODE = """
 local ext_mask = ARGV[1]
@@ -23,23 +25,6 @@ for i=1, #keys do
 end
 return count
 """
-
-
-def mask_to_regex(mask):
-    """Переводит маску в регулярное выражение.
-
-    Args:
-
-    * mask (Строка): маска с *.
-
-    Returns:
-
-        Регулярное выражение. Строка.
-    """
-    regex = re.escape(mask)
-    regex = regex.replace("\\*", "[^:]*")
-    regex = f"^{regex}(?s::.*)?$"
-    return regex
 
 
 class CHIDriverRedisCluster(CHIDriver):
