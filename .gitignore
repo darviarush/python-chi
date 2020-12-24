@@ -5,5 +5,5 @@
 *.pyc
 .coverage
 /build/
-/dist_info.egg-info/
+/python-perl-chi.egg-info/
 /dist/

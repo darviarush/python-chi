@@ -19,7 +19,7 @@ requirements = requirements.group(1)
 requirements = [] if requirements == 'Нет' else requirements.split('\n* ')
 
 setup(
-    name='chi',
+    name='python-perl-chi',
     version=version.group(1),
     description=description.group(1),
     long_description=readme,
@@ -29,7 +29,7 @@ setup(
     platforms=['any'],
     python_requires='>=3.6',
     # The project's main homepage.
-    url='https://github.com/darviarush/python-perl-storable',
+    url='https://github.com/darviarush/python-perl-chi',
 
     # Author details
     author=author.group(1),

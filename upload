@@ -19,12 +19,12 @@ python3 -m twine upload --repository testpypi dist/*
 echo
 echo step 5
 # Поменять название!
-python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps python-perl-storable
+python3 -m pip install --index-url https://test.pypi.org/simple/ --no-deps python-perl-chi
 
 echo
 echo step 6
 # Поменять название!
-pip3 uninstall python_perl_storable
+pip3 uninstall python_perl_chi
 
 echo
 echo step 7
