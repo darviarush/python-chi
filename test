@@ -1,0 +1,6 @@
+#!/bin/bash
+
+rm -fr htmlcov
+coverage run --branch --source=CHI -m pytest tests/ && \
+	coverage report -m && coverage html && \
+    if [ "$1" == "open" ]; then xdg-open htmlcov/index.html; fi

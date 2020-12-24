@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+
+"""
+
+***chi*** - консольная утилита для работы с CHI - унифицированным интерфейсом обработки кеша
+
+    chi get seg1:seg2:seg3
+
+"""
+
+import argparse
+from ast import literal_eval
+import sys
+from rediscluster.exceptions import RedisClusterException
+from data_printer import p
+from CHI import CHI
+
+
+def build_chi(arg):
+    """Функция для создания клиента."""
+    return CHI(server=arg.server, driver=arg.driver, connect_timeout=arg.connect_timeout, request_timeout=arg.request_timeout)
+
+
+parser = argparse.ArgumentParser(description='Осуществляет доступ к хранилищу CHI.')
+
+parser.add_argument('--server', '-S', dest='server', default='127.0.0.1:7000', help='Сервер или сервера кластера через запятую.')
+parser.add_argument('--driver', '-D', dest='driver', default='redis_cluster', help='Драйвер: memcache, redis или redis_cluster.')
+parser.add_argument('--connect_timeout', '-C', dest='connect_timeout', default=1, help='Таймаут коннекта к серверу.')
+parser.add_argument('--request_timeout', '-R', dest='request_timeout', default=10, help='Таймаут запроса к серверу.')
+
+sub_parser = parser.add_subparsers(dest='command', help='Подкоманды.')
+
+parser_get = sub_parser.add_parser('get', help='Извлекает сообщение из хранилища.')
+parser_get.add_argument('key', help='Ключ.')
+
+parser_get_object = sub_parser.add_parser('get_object', help='Извлекает объект CHI из хранилища.')
+parser_get_object.add_argument('key', help='Ключ.')
+
+parser_set = sub_parser.add_parser('set', help='Отправляет сообщение в хранилище.')
+parser_set.add_argument('key', help='Ключ.')
+parser_set.add_argument('--data', '-d', dest='data', help='Данные. Строка.')
+parser_set.add_argument('--code', '-c', dest='code', help='Структура в коде питона.')
+parser_set.add_argument('--zip', '-z', action='store_true', dest='zip', help='Сжимать данные gzip-ом.')
+parser_set.add_argument('--ttl', '-t', default=5 * 60, help='Время устаревания в сек.')
+
+parser_get_object = sub_parser.add_parser('remove', help='Удаляет данные из хранилища.')
+parser_get_object.add_argument('key', help='Ключ.')
+
+parser_keys = sub_parser.add_parser('keys', help='Ключи по маске.')
+parser_keys.add_argument('key', help='Маска.')
+
+parser_erase = sub_parser.add_parser('erase', help='Удаляет данные из хранилища по маске.')
+parser_erase.add_argument('key', help='Маска.')
+parser_erase.add_argument('--strategy', '-s', default='lua', dest='strategy',
+                          help='Стратегия удаления ключей: keys или lua (только для кластера redis).')
+
+
+args = parser.parse_args()
+
+try:
+
+    if args.command == 'get':
+        p(build_chi(args).get(args.key))
+    elif args.command == 'get_object':
+        p(build_chi(args).get_object(args.key))
+    elif args.command == 'set' or args.command == 'set_object':
+        data = None
+        if args.code is not None and args.data is not None:
+            print("Ошибка: аргументы --code и --data используются вместе.", file=sys.stderr)
+            sys.exit(1)
+        elif args.code is not None:
+            try:
+                data = literal_eval(args.code)
+            except BaseException as e:
+                print(f"Ошибка парсинга: {e.__class__.__name__}: {e}.", file=sys.stderr)
+                sys.exit(1)
+        else:
+            data = args.data
+
+        if args.command == 'set':
+            build_chi(args).set(
+                args.key,
+                data,
+                ttl=args.ttl,
+                compress=args.zip,
+            )
+    elif args.command == 'keys':
+        p(build_chi(args).keys(args.key))
+    elif args.command == 'remove':
+        build_chi(args).remove(args.key)
+    elif args.command == 'erase':
+        rampage = build_chi(args)
+        rampage.strategy_of_erase = args.strategy
+        p(rampage.erase(args.key))
+    else:
+        parser.print_usage()
+
+except RedisClusterException as e:
+    print(f"Ошибка подключения. {e}.", file=sys.stderr)
