@@ -1,0 +1,7 @@
+argparse
+data-printer
+json
+gzip
+redis-py-cluster
+redis
+pymemcache

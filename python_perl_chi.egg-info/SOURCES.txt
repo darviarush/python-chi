@@ -1,0 +1,15 @@
+README.md
+setup.py
+CHI/__init__.py
+CHI/chi_cache_object.py
+CHI/chi_driver.py
+CHI/chi_driver_memcache.py
+CHI/chi_driver_redis.py
+CHI/chi_driver_redis_cluster.py
+CHI/chi_util.py
+CHI/exception.py
+python_perl_chi.egg-info/PKG-INFO
+python_perl_chi.egg-info/SOURCES.txt
+python_perl_chi.egg-info/dependency_links.txt
+python_perl_chi.egg-info/requires.txt
+python_perl_chi.egg-info/top_level.txt
