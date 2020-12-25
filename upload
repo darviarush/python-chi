@@ -1,6 +1,10 @@
 #!/bin/sh
 
 echo
+echo step 0
+rm -fr dist
+
+echo
 echo step 1
 python3 -m pip install --user --upgrade setuptools wheel
 

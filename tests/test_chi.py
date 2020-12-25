@@ -122,6 +122,17 @@ class AdvancedTestSuite(unittest.TestCase):
         chi.set("type:k1:k2", {"x": 26})
         self.assertEqual(chi.get("type:k1:k2"), {"x": 26}, "Возвращаются данные сжатые сериализатором.")
 
+
+    def test_compress_threshold(self):
+        """Тест compress_threshold."""
+        chi = CHI('10.10.10.10:80')
+        
+        chi_cache_object = chi.set_object("k", "Я" * int(1024*64/2))
+        self.assertFalse(chi_cache_object.is_compressed, "Длина строки меньше compress_threshold")
+
+        chi_cache_object = chi.set_object("k", "Я" * int(1024*64/2+1))
+        self.assertTrue(chi_cache_object.is_compressed, "Длина строки больше compress_threshold")
+
     def test_max_time(self):
         """Тест max_time."""
 

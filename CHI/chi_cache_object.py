@@ -117,7 +117,7 @@ class CHICacheObject:
 
         return self
 
-    def pack_to_data(self, expires_in, early_expires_in, expires_variance, serializer, compress):
+    def pack_to_data(self, expires_in, early_expires_in, expires_variance, serializer, compress, compress_threshold):
         """Пакует данные в объект.
 
         Args:
@@ -148,7 +148,7 @@ class CHICacheObject:
             self.is_serialized = True
             self.is_transformed |= T_SERIALIZED
 
-        if compress:
+        if compress is None and len(value)>compress_threshold or compress is True:
             value = gzip.compress(value)
             self.is_compressed = True
             self.is_transformed |= T_COMPRESSED

@@ -14,6 +14,7 @@ class CHIDriver:
                  expires_in=60,
                  early_expires_in=None,
                  expires_variance=0.5,
+                 compress_threshold=1024*64,
                  connect_timeout=1,
                  request_timeout=10,
                  strategy_of_erase='lua',
@@ -51,6 +52,7 @@ class CHIDriver:
         server = [dict(host=s.split(":")[0], port=int(s.split(":")[1])) for s in server.split(",")]
 
         self.server = server
+        self.compress_threshold = compress_threshold
         self.connect_timeout = connect_timeout
         self.request_timeout = request_timeout
         self.serializer = serializer
@@ -73,19 +75,19 @@ class CHIDriver:
 
         return chi_object
 
-    def get(self, key, builder=None, ttl=None):
+    def get(self, key, builder=None, ttl=None, compress=None):
         """Возвращает данные из хранилища."""
         chi_object = self.get_object(key)
 
         if chi_object is None and builder:
-            chi_object = self.set_object(key, builder(), ttl)
+            chi_object = self.set_object(key, builder(), ttl, compress)
 
         if chi_object is None:
             return None
 
         return chi_object.value
 
-    def set_object(self, key, data, ttl=None, compress=False):
+    def set_object(self, key, data, ttl=None, compress=None):
         """Устанавливает данные в хранилище."""
 
         expires_in = self.expires_in if ttl is None else ttl
@@ -97,6 +99,7 @@ class CHIDriver:
             expires_variance=self.expires_variance,
             serializer=self.serializer,
             compress=compress,
+            compress_threshold=self.compress_threshold,
         )
         self.driver_set(key, packed_chi_object, expires_in)
         return chi_object
@@ -105,7 +108,7 @@ class CHIDriver:
         self.client.set(key, packed_chi_object)
         self.client.expire(key, ttl)
 
-    def set(self, key, data, ttl=None, compress=False):
+    def set(self, key, data, ttl=None, compress=None):
         """Устанавливает данные в хранилище."""
         self.set_object(key, data, ttl, compress)
         return self
