@@ -58,7 +58,6 @@ class RedisClusterMock(BaseMock):
         self.connection_pool = Mock()
         self.connection_pool.nodes.nodes.items.return_value = ((0, {"server_type": "master"}),
                                                                (0, {"server_type": "slave"}))
-
     def parse_response(self, connection, command):
         """Замена метода parse_response."""
 

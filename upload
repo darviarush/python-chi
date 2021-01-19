@@ -2,7 +2,7 @@
 
 echo
 echo step 0
-rm -fr dist
+rm -fr build dist htmlcov
 
 echo
 echo step 1

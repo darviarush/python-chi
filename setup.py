@@ -10,33 +10,40 @@ def get(r, name):
         raise Exception("В README.md не найден" + name)
     return match
 
+name = get(r'^# NAME\s*(\S+)', "о имя")
+license = get(r'^# LICENSE\s*(\S+)', "а лицензия")
+homepage = get(r'^# HOMEPAGE\s*(\S+)', "а ссылка на домашнюю страницу")
 version = get(r'^# VERSION\s*(\S+)', "а версия")
 author = get(r'^# AUTHOR\s*([^<>#]+)\s+<([^<>]+)>', " автор")
 description = get(r'^# NAME\s*([^\n]+?)\s*$', "о описание")
+scripts = get(r'^# SCRIPTS\s*(\n\*\s+\S+\s+)+', "ы скрипты")
 requirements = get(r'^# REQUIREMENTS\s*\n\*([^#]*?)\s*#', "ы зависимости")
 
 requirements = requirements.group(1)
 requirements = [] if requirements == 'Нет' else requirements.split('\n* ')
 
+scripts = ['bin/'+i.rstrip() for i in scripts.group(1).split('\n* ')[1:]]
+
+
 setup(
-    name='python-perl-chi',
+    name=name.group(1),
     version=version.group(1),
     description=description.group(1),
     long_description=readme,
     long_description_content_type="text/markdown",
 
-    scripts=['script/chi'],
+    scripts=scripts,
     platforms=['any'],
     python_requires='>=3.6',
     # The project's main homepage.
-    url='https://github.com/darviarush/python-perl-chi',
+    url=homepage.group(1),
 
     # Author details
     author=author.group(1),
     author_email=author.group(2),
 
     # Choose your license
-    license='MIT',
+    license=license,
 
     packages=find_packages(),
     install_requires=requirements,

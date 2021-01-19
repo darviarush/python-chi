@@ -2,21 +2,21 @@
 
 # NAME
 
-chi - Унифицированный интерфейс обработки кэша
+python-perl-chi - Унифицированный интерфейс обработки кэша
 
 # VERSION
 
-0.1.0
+0.1.5
 
 # DESCRIPTION
 
 ```python
+
 from chi import CHI
 
 chi = CHI(
 	server="127.0.0.1:7001,127.0.0.1:7002,127.0.0.1:7003", 
 	driver='redis_cluster',
-
 )
 
 chi.set("k1", "Привет Мир!", ttl=10)
@@ -49,7 +49,7 @@ chi.remove("k1")
 - connect_timeout=1 - таймаут коннекта к хранилищу в секундах;
 - request_timeout=10 - таймаут запроса к хранилищу в секундах;
 - strategy_of_erase='lua' - стратегия удаления для метода `erase(mask)` (только для `redis-cluster`). Значения: `lua` - рассылает на все ноды кластера скрипт на lua, который удаляет ключи. И `keys` - получает ключи по маске, а затем - удаляет.
-
+- compress_threshold - максимальная длина данных в байтах после которой будет происходить сжатие gzip-ом.
 
 Для предотвращения конкуренции за ресурсы, когда ключ истекает и несколько запросивших его процессов начинают
 одновременно генерировать для него данные, CHI обманыевает один из процессов, что ключ уже удалён. Тогда
@@ -64,13 +64,15 @@ chi.remove("k1")
 
 - `get(key, builder=None, ttl=None)` - получить данные. builder - функция для создания ключа, если ключ не найден. ttl - время жизни ключа в секундах, если не указан, то используется self.expires_in;
 - `get_object(key, builder=None, ttl=30)` - получить объект `CHI.chi_cache_object.CHICacheObject`;
-- `set(key, data, ttl=None, compress=None)` - установить данные. compress - сжать их gzip-ом, если не указан - берётся `self.compress_threshold`;
+- `set(key, data, ttl=None, compress=None)` - установить данные. compress (True, False) - сжать их gzip-ом, если не указан - будет задействован `self.compress_threshold`;
 - `set_object(key, data, ttl=None, compress=None)` - установить данные и вернуть объект чи сформированный для установки;
 - `remove(key)` - удалить ключ;
 - `keys(mask)` - получить ключи соответствующие маске (`*` - ноль или более символов);
 - `erase(mask)` - удалить ключи соответствующие маске.
 
-# SCRIPT
+# SCRIPTS
+
+* chi
 
 ```sh
 
@@ -92,25 +94,20 @@ $ chi <команда> --help
 # INSTALL
 
 ```sh
-$ pip install chi
+$ pip install python-perl-chi
 ```
 
 # REQUIREMENTS
 
 * argparse
 * data-printer
-* json
-* gzip
 * redis-py-cluster
 * redis
 * pymemcache
 
-# LICENSE
+# HOMEPAGE
 
-Copyright (C) Yaroslav O. Kosmina.
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Python itself.
+https://github.com/darviarush/python-perl-chi
 
 # AUTHOR
 
