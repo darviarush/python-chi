@@ -41,7 +41,7 @@ parser_set.add_argument('key', help='Ключ.')
 parser_set.add_argument('--data', '-d', dest='data', help='Данные. Строка.')
 parser_set.add_argument('--code', '-c', dest='code', help='Структура в коде питона.')
 parser_set.add_argument('--zip', '-z', action='store_true', dest='zip', help='Сжимать данные gzip-ом.')
-parser_set.add_argument('--ttl', '-t', default=5 * 60, help='Время устаревания в сек.')
+parser_set.add_argument('--ttl', '-t', default=str(5 * 60), dest='ttl', help='Время устаревания в сек.')
 
 parser_get_object = sub_parser.add_parser('remove', help='Удаляет данные из хранилища.')
 parser_get_object.add_argument('key', help='Ключ.')
@@ -81,7 +81,7 @@ try:
             build_chi(args).set(
                 args.key,
                 data,
-                ttl=args.ttl,
+                ttl=int(args.ttl),
                 compress=args.zip,
             )
     elif args.command == 'keys':
