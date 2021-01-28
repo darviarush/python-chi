@@ -77,7 +77,7 @@ class CHICacheObject:
         today = datetime.today()
         return today >= self.early_expires_at and (
             today >= self.expires_at or (
-                random.getstate() < (today - self.early_expires_at) / (self.expires_at - self.early_expires_at)
+                random.random() < (today - self.early_expires_at) / (self.expires_at - self.early_expires_at)
             )
         )
 
