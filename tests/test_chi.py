@@ -35,15 +35,13 @@ class RedisMock(BaseMock):
 
     def keys(self, mask):
         """Замена метода keys."""
-        regex = re.compile(mask_to_regex(mask))
+        mask, regex = mask_to_regex(mask)
+        
+        regex = re.compile(regex)
         x = []
         for k, v in self.storage.items():
             if regex.search(k):
-                x.append(k)
-
-        import sys
-        print(self.storage, file=sys.stderr)
-        print([x, mask, regex], file=sys.stderr)
+               x.append(k.encode('utf-8'))
 
         return x
 
@@ -61,13 +59,13 @@ class RedisClusterMock(BaseMock):
     def parse_response(self, connection, command):
         """Замена метода parse_response."""
 
-        keys = ['type:x1:k1:x3', 'type:x1:k2:x3', 'type:x1:k3:x3']
+        keys = [b'type:x1:k1:x3', b'type:x1:k2:x3', b'type:x1:k3:x3']
 
         if command == 'keys':
             return keys
         if command == 'eval':
             for key in keys:
-                del self.storage[key]
+                del self.storage[key.decode('utf-8')]
             return 3
         return None
 

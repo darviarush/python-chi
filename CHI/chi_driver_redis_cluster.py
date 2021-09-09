@@ -2,6 +2,7 @@
     Предоставляет низкоуровневые методы для доступа к хранилищу Redis Cluster
 """
 
+import re
 from rediscluster import RedisCluster
 
 from .chi_driver import CHIDriver
@@ -57,19 +58,29 @@ class CHIDriverRedisCluster(CHIDriver):
                 result.append(self.client.parse_response(connection, av[0]))
         return result
 
-    def keys(self, key):
+    def keys(self, mask):
         """Возвращает ключи по маске."""
-        result = []
-        for src_keys in self.run("keys", key):
-            result += src_keys
-        return result
+        
+        mask, regex = mask_to_regex(mask)
+        regex = re.compile(regex, re.S)
+
+        keys_by_cluster = self.run("keys", mask)
+        keys = []
+        for keys_in_cluster in keys_by_cluster:
+            for key in keys_in_cluster:
+                key = key.decode('utf-8')
+                if regex.match(key):
+                    keys.append(key)
+        
+        return keys
 
     def erase_by_lua_on_all_nodes(self, mask):
         """Отправляет на каждую ноду кластера lua-скрипт, который затем удаляет подходящие ключи на ноде."""
-        regex = mask_to_regex(mask)
+        mask, regex = mask_to_regex(mask)
         # В регулярках lua вместо бэкслешей используется процент перед управляющими символами.
         regex = regex.replace("\\", "%")
-        regex = regex.replace("(?s::.*)?", ".*")
+        regex = regex.replace("(?s::.*)", ".*")
 
-        result = self.run("eval", LUA_ERASE_ON_ONE_NODE, 0, f"{mask}*", regex, server_type="master")
+        result = self.run("eval", LUA_ERASE_ON_ONE_NODE, 0, mask, regex, server_type="master")
+
         return sum(result)

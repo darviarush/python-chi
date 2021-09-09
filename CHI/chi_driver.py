@@ -2,8 +2,9 @@
     Базовый драйвер
 """
 
-import json
+import json, re
 from CHI.chi_cache_object import CHICacheObject
+from .chi_util import mask_to_regex
 
 
 class CHIDriver:
@@ -120,7 +121,15 @@ class CHIDriver:
 
     def keys(self, mask):
         """Возвращает ключи по маске."""
-        return self.client.keys(mask)
+        mask, regex = mask_to_regex(mask)
+
+        regex = re.compile(regex, re.S)
+        keys = []
+        for key in self.client.keys(mask):
+            key = key.decode('utf-8')
+            if regex.match(key):
+                keys.append(key)
+        return keys
 
     def erase(self, mask):
         """Удаление ключей по маске."""
@@ -129,3 +138,4 @@ class CHIDriver:
             self.remove(key)
             counter += 1
         return counter
+
