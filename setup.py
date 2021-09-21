@@ -25,6 +25,7 @@ requirements = [] if requirements == 'Нет' else requirements.split('\n* ')
 scripts = ['bin/'+i.rstrip() for i in scripts.group(1).split('\n* ')[1:]]
 
 
+
 setup(
     name=name.group(1),
     version=version.group(1),
@@ -43,7 +44,7 @@ setup(
     author_email=author.group(2),
 
     # Choose your license
-    license=license,
+    license=license.group(1),
 
     packages=find_packages(),
     install_requires=requirements,

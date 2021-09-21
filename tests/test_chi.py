@@ -2,8 +2,9 @@
 unittest case.
 """
 
+import re
 import unittest
-from unittest.mock import Mock
+from CHI.chi_util import mask_to_redis_regex
 
 
 class BaseMock:
@@ -25,9 +26,6 @@ class BaseMock:
             del self.storage[key]
 
 
-from CHI.chi_util import mask_to_regex
-import re
-
 class RedisMock(BaseMock):
     """Заглушка."""
     def expire(self, key, ttl):
@@ -35,8 +33,7 @@ class RedisMock(BaseMock):
 
     def keys(self, mask):
         """Замена метода keys."""
-        mask, regex = mask_to_regex(mask)
-        
+        regex = mask_to_redis_regex(mask)
         regex = re.compile(regex)
         x = []
         for k, v in self.storage.items():
@@ -47,30 +44,68 @@ class RedisMock(BaseMock):
 
 
 
-class RedisClusterMock(BaseMock):
+class RedisClusterMock():
     """Мок для RedisCluster."""
 
     def __init__(self, *av, **kw):
         """Конструктор."""
-        super().__init__(*av, **kw)
-        self.connection_pool = Mock()
-        self.connection_pool.nodes.nodes.items.return_value = ((0, {"server_type": "master"}),
-                                                               (0, {"server_type": "slave"}))
+        self.storage = {}
+        self.connection_pool = self
+        self.nodes = self
+        self.args = None
+
+    def get_connection_by_node(self, node):
+        """Замена метода get_connection_by_node."""
+        return self
+
+    def items(self):
+        """Замена метода items."""
+        return ((0, {"server_type": "master"}),
+                (0, {"server_type": "slave"}))
+
+    def send_command(self, *args):
+        """Замена метода send_command."""
+        self.args = args
+
     def parse_response(self, connection, command):
         """Замена метода parse_response."""
-
-        keys = [b'type:x1:k1:x3', b'type:x1:k2:x3', b'type:x1:k3:x3']
-
         if command == 'keys':
-            return keys
+            mask = mask_to_redis_regex(self.args[1])
+            re_mask = re.compile(mask.encode('utf-8'), re.S)
+            m=[key for key in self.storage.keys() if re_mask.match(key)]
+            return m
+
         if command == 'eval':
-            for key in keys:
-                del self.storage[key.decode('utf-8')]
-            return 3
+        
+            mask = mask_to_redis_regex(self.args[3])
+            re_mask = re.compile(mask.encode('utf-8'), re.S)
+
+            count = 0
+            for key in list(self.storage.keys()):
+                if re_mask.match(key):
+                    del self.storage[key]
+                    count += 1
+            return count
         return None
 
     def expire(self, key, ttl):
         """Замена метода expire."""
+
+    def get(self, key):
+        """Замена метода get."""
+        return self.storage.get(key.encode('utf-8'))
+
+    def set(self, key, value, ttl=None):
+        """Замена метода set."""
+        self.storage[key.encode('utf-8')] = value
+    
+    def delete(self, key):
+        """Замена метода delete."""
+        key = key.encode('utf-8')
+        if key in self.storage:
+            del self.storage[key]
+
+
 
 class MemcacheMock(BaseMock):
     """Заглушка."""
@@ -197,18 +232,31 @@ class AdvancedTestSuite(unittest.TestCase):
         chi = CHI('10.10.10.10:80')
 
         chi.set("type:x1:k1:x3", 10)
+        self.assertEqual(chi.get("type:x1:k1:x3"), 10, "Ключ есть.")
+
+        chi.remove("type:x1:k1:x3")
+        self.assertEqual(chi.get("type:x1:k1:x3"), None, "Ключ удалён.")
+
+        chi.set("type:x1:k1:x3", 10)
         chi.set("type:x1:k2:x3", 20)
         chi.set("type:x1:k3:x3", 30)
         chi.set("type:x1:k3:x2", 6)
+        chi.set("type:x1:k3:x3:", 7)
+        chi.set("type:x1:k3:x3:x7", 8)
 
-        self.assertEqual(chi.keys("type:x1:k*:x3"), [("type:x1:k1:x3"),
+        self.assertEqual(chi.keys("type:x1:k*:x3:?**"), [("type:x1:k1:x3"),
                                                      ("type:x1:k2:x3"),
-                                                     ("type:x1:k3:x3")],
+                                                     ("type:x1:k3:x3"),
+                                                     ("type:x1:k3:x3:"),
+                                                     ("type:x1:k3:x3:x7"),
+                                                     ],
                          "Список ключей по маске.")
 
-        chi.erase("type:x1:k*:x3")
+        self.assertEqual(chi.erase("type:x1:k*:x3:?**"), 5, "Ключи стёрты по маске.")
 
         self.assertEqual(chi.get("type:x1:k3:x3"), None, "Ключ удалён.")
+        self.assertEqual(chi.get("type:x1:k3:x2:"), None, "Ключ удалён.")
+        self.assertEqual(chi.get("type:x1:k3:x2:x7"), None, "Ключ удалён.")
         self.assertEqual(chi.get("type:x1:k3:x2"), 6, "Ключ остался.")
 
     def test_erase_keys(self):
@@ -216,18 +264,31 @@ class AdvancedTestSuite(unittest.TestCase):
         chi = CHI('10.10.10.10:80', strategy_of_erase='keys')
 
         chi.set("type:x1:k1:x3", 10)
+        self.assertEqual(chi.get("type:x1:k1:x3"), 10, "Ключ есть.")
+
+        chi.remove("type:x1:k1:x3")
+        self.assertEqual(chi.get("type:x1:k1:x3"), None, "Ключ удалён.")
+
+        chi.set("type:x1:k1:x3", 10)
         chi.set("type:x1:k2:x3", 20)
         chi.set("type:x1:k3:x3", 30)
         chi.set("type:x1:k3:x2", 6)
+        chi.set("type:x1:k3:x3:", 7)
+        chi.set("type:x1:k3:x3:x7", 8)
 
-        self.assertEqual(chi.keys("type:x1:k*:x3"), [("type:x1:k1:x3"),
+        self.assertEqual(chi.keys("type:x1:k*:x3:?**"), [("type:x1:k1:x3"),
                                                      ("type:x1:k2:x3"),
-                                                     ("type:x1:k3:x3")],
+                                                     ("type:x1:k3:x3"),
+                                                     ("type:x1:k3:x3:"),
+                                                     ("type:x1:k3:x3:x7"),
+                                                     ],
                          "Список ключей по маске.")
 
-        chi.erase("type:x1:k*:x3")
+        self.assertEqual(chi.erase("type:x1:k*:x3:?**"), 5, "Ключи стёрты по маске.")
 
         self.assertEqual(chi.get("type:x1:k3:x3"), None, "Ключ удалён.")
+        self.assertEqual(chi.get("type:x1:k3:x2:"), None, "Ключ удалён.")
+        self.assertEqual(chi.get("type:x1:k3:x2:x7"), None, "Ключ удалён.")
         self.assertEqual(chi.get("type:x1:k3:x2"), 6, "Ключ остался.")
 
 
@@ -261,15 +322,22 @@ class AdvancedTestSuite(unittest.TestCase):
         chi.set("type:x1:k2:x3", 20)
         chi.set("type:x1:k3:x3", 30)
         chi.set("type:x1:k3:x2", 6)
+        chi.set("type:x1:k3:x3:", 7)
+        chi.set("type:x1:k3:x3:x7", 8)
 
-        self.assertEqual(chi.keys("type:x1:k*:x3"), [("type:x1:k1:x3"),
+        self.assertEqual(chi.keys("type:x1:k*:x3:?**"), [("type:x1:k1:x3"),
                                                      ("type:x1:k2:x3"),
-                                                     ("type:x1:k3:x3")],
+                                                     ("type:x1:k3:x3"),
+                                                     ("type:x1:k3:x3:"),
+                                                     ("type:x1:k3:x3:x7"),
+                                                     ],
                          "Список ключей по маске.")
 
-        chi.erase("type:x1:k*:x3")
+        self.assertEqual(chi.erase("type:x1:k*:x3:?**"), 5, "Ключи стёрты по маске.")
 
         self.assertEqual(chi.get("type:x1:k3:x3"), None, "Ключ удалён.")
+        self.assertEqual(chi.get("type:x1:k3:x2:"), None, "Ключ удалён.")
+        self.assertEqual(chi.get("type:x1:k3:x2:x7"), None, "Ключ удалён.")
         self.assertEqual(chi.get("type:x1:k3:x2"), 6, "Ключ остался.")
 
 

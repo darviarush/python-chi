@@ -61,7 +61,7 @@ class CHIDriverRedisCluster(CHIDriver):
     def keys(self, mask):
         """Возвращает ключи по маске."""
         
-        mask, regex = mask_to_regex(mask)
+        mask, regex = mask_to_regex(mask)        
         regex = re.compile(regex, re.S)
 
         keys_by_cluster = self.run("keys", mask)
