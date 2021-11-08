@@ -19,9 +19,9 @@ chi = CHI(
 	driver='redis_cluster',
 )
 
-chi.set("k1", "Привет Мир!", ttl=10)
+chi.set("k1", "Привет, Мир!", ttl=10)
 
-print(chi.get("k1"))	# -> "Привет Мир!"
+print(chi.get("k1"))	# -> "Привет, Мир!"
 
 print(chi.keys("k*"))	# -> ["k1"]
 
