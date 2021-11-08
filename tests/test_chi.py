@@ -88,6 +88,9 @@ class RedisClusterMock():
             return count
         return None
 
+    def release(self, connection):
+        """Закрытие соединения для connection_pool."""
+
     def expire(self, key, ttl):
         """Замена метода expire."""
 

@@ -54,8 +54,11 @@ class CHIDriverRedisCluster(CHIDriver):
         for _, node in self.client.connection_pool.nodes.nodes.items():
             if node['server_type'] == server_type:
                 connection = self.client.connection_pool.get_connection_by_node(node)
-                connection.send_command(*av)
-                result.append(self.client.parse_response(connection, av[0]))
+                try:
+                    connection.send_command(*av)
+                    result.append(self.client.parse_response(connection, av[0]))
+                finally:
+                    self.client.connection_pool.release(connection)
         return result
 
     def keys(self, mask):
